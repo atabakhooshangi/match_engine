@@ -1,0 +1,7 @@
+aiokafka==0.8.1
+async-timeout==4.0.3
+asynctest==0.13.0
+kafka-python==2.0.2
+packaging==24.0
+pytreemap==0.5.1
+redis==5.0.1
