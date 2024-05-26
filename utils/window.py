@@ -38,3 +38,11 @@ class Window(object):
         window.cap = _cap
         window.bit_map = BitMap.from_data(bitmap_data)
         return window
+
+    def to_dict(self):
+        return {
+            'min': self.min,
+            'max': self.max,
+            'cap': self.cap,
+            'bit_map': self.bit_map.to_list()  # use to_list method here
+        }

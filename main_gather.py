@@ -12,20 +12,20 @@ from models.models import Product
 from config import *
 
 
-async def main():
-    product = Product(_id=products[0]['id'], base_currency=products[0]['base_currency'],
-                      quote_currency=products[0]['quote_currency'], base_scale=products[0]['base_scale'],
-                      quote_scale=products[0]['quote_scale'])
+async def initialize_engine(product_data):
+    product = Product(_id=product_data['id'], base_currency=product_data['base_currency'],
+                      quote_currency=product_data['quote_currency'], base_scale=product_data['base_scale'],
+                      quote_scale=product_data['quote_scale'])
 
-    snapshot_store = RedisSnapshotStore(product_id=products[0]['id'], ip=redis_ip, port=redis_port)
+    snapshot_store = RedisSnapshotStore(product_id=product_data['id'], ip=redis_ip, port=redis_port)
 
     log_store = KafkaLogStore(product_id=product.id, brokers=kafka_brokers)
     await log_store.start()
-    order_reader = KafkaOrderReader(product_id=products[0]['id'], brokers=kafka_brokers,
-                                    group_id=products[0]['group_id'])
+    order_reader = KafkaOrderReader(product_id=product_data['id'], brokers=kafka_brokers,
+                                    group_id=product_data['group_id'])
     await order_reader.start()
 
-    orderbook_dispatcher = OrderBookDispatcher(product_id=products[0]['id'], brokers=kafka_brokers)
+    orderbook_dispatcher = OrderBookDispatcher(product_id=product_data['id'], brokers=kafka_brokers)
     await orderbook_dispatcher.start()
 
     # engine
@@ -36,6 +36,13 @@ async def main():
 
     await engine.initialize_snapshot()
     await engine.start()
+
+
+async def main():
+    # List of product IDs
+
+    tasks = [initialize_engine(product_id) for product_id in products]
+    await asyncio.gather(*tasks)
 
 
 if __name__ == "__main__":

@@ -5,3 +5,4 @@ kafka-python==2.0.2
 packaging==24.0
 pytreemap==0.5.1
 redis==5.0.1
+websockets==12.0

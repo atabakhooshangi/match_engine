@@ -33,12 +33,12 @@ class TimeInForceType(Enum):
 
 
 class OrderStatus(Enum):
-    OrderStatusNew = "new"
-    OrderStatusOpen = "open"
-    OrderStatusCancelling = "cancelling"
-    OrderStatusCancelled = "cancelled"
-    OrderStatusPartial = "partial"
-    OrderStatusFilled = "filled"
+    OrderStatusNew = "NEW"
+    OrderStatusOpen = "OPEN"
+    OrderStatusCancelling = "CANCELLING"
+    OrderStatusCancelled = "CANCELLED"
+    OrderStatusPartial = "PARTIAL"
+    OrderStatusFilled = "FILLED"
 
 
 class DoneReason(Enum):

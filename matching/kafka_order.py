@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # encoding: utf-8
-from typing import List , Dict
+from typing import List, Dict
 import json
 from models.models import Order
-from utils.kafka import KafkaConsumer , KafkaProducer
+from utils.kafka import KafkaConsumer, KafkaProducer
 from utils.utils import JsonEncoder
 
 TOPIC_ORDER_PREFIX = "matching_order_"
@@ -28,16 +28,17 @@ class KafkaOrderReader(object):
         order = Order.from_json_str(json_str=message.value)
         return message.offset, order
 
+
 TOPIC_ORDER_BOOK_SUFFIX = "_order_book"
 
+
 class OrderBookDispatcher(object):
-    def __init__(self,product_id:str,brokers:List):
-        self.topic = ''.join([product_id,TOPIC_ORDER_BOOK_SUFFIX])
+    def __init__(self, product_id: str, brokers: List):
+        self.topic = ''.join([product_id, TOPIC_ORDER_BOOK_SUFFIX])
         self.dispatcher = KafkaProducer(brokers)
 
-
-    async def dispatch(self, orderbook:Dict):
-        await self.dispatcher.send(topic=self.topic, payload=json.dumps(orderbook,cls=JsonEncoder).encode('utf-8'))
+    async def dispatch(self, orderbook: Dict):
+        await self.dispatcher.send(topic=self.topic, payload=json.dumps(orderbook, cls=JsonEncoder).encode('utf-8'))
         await self.dispatcher.flush()
 
     async def start(self):

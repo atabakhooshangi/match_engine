@@ -3,6 +3,7 @@
 import logging
 import sys
 import copy
+import json
 from decimal import Decimal
 from typing import List, Dict
 
@@ -42,14 +43,14 @@ class BookOrder(object):
     @property
     def to_json(self):
         return {
-        'order_id':self.order_id,
-        'user_id':self.user_id,
-        'price':self.price,
-        'size':self.size,
-        'funds':self.funds,
-        'side':self.side,
-        'type':self.type,
-        'time_in_force':self.time_in_force
+            'order_id': self.order_id,
+            'user_id': self.user_id,
+            'price': self.price,
+            'size': self.size,
+            'funds': self.funds,
+            'side': self.side,
+            'type': self.type,
+            'time_in_force': self.time_in_force
         }
 
 
@@ -60,6 +61,15 @@ class OrderBookSnapshot(object):
         self.trade_seq: int = trade_seq
         self.log_seq: int = log_seq
         self.order_id_window: Window = order_id_window
+
+    def to_dict(self):
+        return {
+            'product_id': self.product_id,
+            'orders': [order.to_json for order in self.orders],
+            'trade_seq': self.trade_seq,
+            'log_seq': self.log_seq,
+            'order_id_window': self.order_id_window.to_dict()
+        }
 
 
 class PriceOrderIdKey(object):
@@ -108,7 +118,7 @@ class Depth(object):
         self.orders[order.order_id] = order
         self.queue[PriceOrderIdKey(order.price, order.order_id)] = order.order_id
 
-    def decr_size(self, order_id: int, size: Decimal):
+    def decr_size(self, order_id: int, size: Decimal, quote_scale: int = 2):
         order = self.orders.get(order_id)
         if order is None:
             raise DepthException("order {} not found on book".format(order_id))
@@ -117,6 +127,7 @@ class Depth(object):
             raise DepthException("order {} Size {} less than {}".format(order_id, order.size, size))
 
         order.size -= size
+        order.funds = truncate_decimal(order.size * order.price, quote_scale)
         self.orders[order_id] = order
         if order.size.is_zero():
             del self.orders[order_id]
@@ -140,12 +151,13 @@ class OrderBook(object):
         self.depths[Side.SideBuy] = bids
         self.depths[Side.SideSell] = asks
 
-    def get_current_depths(self)-> dict:
+    def get_current_depths(self) -> dict:
         asks = [self.depths[Side.SideSell].orders[v].to_json
                 for v in self.depths[Side.SideSell].queue.values()]
         bids = [self.depths[Side.SideBuy].orders[v].to_json
                 for v in self.depths[Side.SideBuy].queue.values()]
-
+        bids.sort(key=lambda x: (-int(x['price']), -int(x['order_id'])))
+        asks.sort(key=lambda x: (-int(x['price']), -int(x['order_id'])))
         return {
             'asks': asks,
             'bids': bids
@@ -245,7 +257,7 @@ class OrderBook(object):
             self.order_id_window.put(order.id)
         except WindowException as ex:
             logging.error("{}".format(str(ex)))
-            return logs , self.get_current_depths()
+            return logs, self.get_current_depths()
 
         taker_order = BookOrder.from_order(order)
 
@@ -278,8 +290,10 @@ class OrderBook(object):
                 size = taker_order.size.min(maker_order.size)
                 # adjust the size of taker order
                 taker_order.size = taker_order.size - size
-            elif taker_order.type == OrderType.OrderTypeMarket and taker_order.size == Side.SideBuy:
+            elif taker_order.type == OrderType.OrderTypeMarket and taker_order.side == Side.SideBuy:
+                print('miad inja ')
                 if taker_order.funds.is_zero():
+                    print('miad inja break mishe')
                     break
 
                 taker_size = truncate_decimal(taker_order.funds / price, self.product.base_scale)
@@ -294,7 +308,7 @@ class OrderBook(object):
                 taker_order.funds = taker_order.funds - funds
 
             try:
-                self.depths[taker_order.side.opposite()].decr_size(maker_order.order_id, size)
+                self.depths[taker_order.side.opposite()].decr_size(maker_order.order_id, size, self.product.quote_scale)
                 maker_order.size -= size
             except DepthException as ex:
                 logging.fatal("{}".format(ex))
@@ -303,14 +317,14 @@ class OrderBook(object):
             # matched, write a log
             match_log = MatchLog(self.next_log_seq(), self.product.id, self.net_trade_seq(), taker_order, maker_order,
                                  price, size)
-            # logging.info("MatchLog: {}".format(MatchLog.to_json_str(match_log)))
+            logging.info("MatchLog: {}".format(MatchLog.to_json_str(match_log)))
             logs.append(match_log)
 
             # maker is filled
             if maker_order.size.is_zero():
                 done_log = DoneLog(self.next_log_seq(), self.product.id, maker_order, maker_order.size,
                                    DoneReason.DoneReasonFilled)
-                # logging.info("DoneLog: {}".format(DoneLog.to_json_str(done_log)))
+                logging.info("DoneLog: {}".format(DoneLog.to_json_str(done_log)))
                 logs.append(done_log)
 
         if taker_order.type == OrderType.OrderTypeLimit and taker_order.size > 0:
@@ -318,7 +332,7 @@ class OrderBook(object):
             self.depths[taker_order.side].add(taker_order)
 
             open_log = OpenLog(self.next_log_seq(), self.product.id, taker_order)
-            # logging.info("OpenLog: {}".format(OpenLog.to_json_str(open_log)))
+            logging.info("OpenLog: {}".format(OpenLog.to_json_str(open_log)))
             logs.append(open_log)
         else:
             remaining_size = taker_order.size
@@ -332,11 +346,11 @@ class OrderBook(object):
                     reason = DoneReason.DoneReasonCancelled
 
             done_log = DoneLog(self.next_log_seq(), self.product.id, taker_order, remaining_size, reason)
-            # logging.info("DoneLog: {}".format(DoneLog.to_json_str(done_log)))
+            logging.info("DoneLog: {}".format(DoneLog.to_json_str(done_log)))
             logs.append(done_log)
         order_book = self.get_current_depths()
         # print(order_book,f'==============================orderbook \n{len(order_book["asks"])}- {len(order_book["bids"])}\n\n\n\n\n\n')
-        return logs , order_book
+        return logs, order_book
 
     def cancel_order(self, order: Order) -> tuple:
         logs = list()
@@ -352,14 +366,14 @@ class OrderBook(object):
 
         remaining_size = book_order.size
         try:
-            self.depths[order.side].decr_size(order.id, book_order.size)
+            self.depths[order.side].decr_size(order.id, book_order.size,self.product.quote_scale)
         except DepthException as ex:
             logging.fatal("{}".format(ex))
             sys.exit()
 
         done_log = DoneLog(self.next_log_seq(), self.product.id, book_order, remaining_size,
                            DoneReason.DoneReasonCancelled)
-        # logging.info("DoneLog: {}".format(DoneLog.to_json_str(done_log)))
+        logging.info("DoneLog: {}".format(DoneLog.to_json_str(done_log)))
         logs.append(done_log)
         return logs, self.get_current_depths()
 
@@ -376,7 +390,7 @@ class OrderBook(object):
                            DoneReason.DoneReasonCancelled)
         # logging.info("DoneLog: {}".format(DoneLog.to_json_str(done_log)))
         logs.append(done_log)
-        return logs , self.get_current_depths()
+        return logs, self.get_current_depths()
 
     def snapshot(self) -> OrderBookSnapshot:
         snapshot = OrderBookSnapshot(self.product.id, list(), self.trade_seq, self.log_seq, self.order_id_window)

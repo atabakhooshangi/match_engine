@@ -83,17 +83,17 @@ class Order(object):
             raise OrderException("invalid TimeInForceType")
 
         status = order_dict.get("status")
-        if status == "new":
+        if status == "NEW":
             order_status = OrderStatus.OrderStatusNew
-        elif status == "open":
+        elif status == "OPEN":
             order_status = OrderStatus.OrderStatusOpen
-        elif status == "cancelling":
+        elif status == "CANCELLING":
             order_status = OrderStatus.OrderStatusCancelling
-        elif status == "cancelled":
+        elif status == "CANCELLED":
             order_status = OrderStatus.OrderStatusCancelled
-        elif status == "partial":
+        elif status == "PARTIAL":
             order_status = OrderStatus.OrderStatusPartial
-        elif status == "filled":
+        elif status == "FILLED":
             order_status = OrderStatus.OrderStatusFilled
         else:
             raise OrderException("invalid OrderStatus")

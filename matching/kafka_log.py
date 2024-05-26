@@ -11,6 +11,7 @@ TOPIC_BOOK_MESSAGE_PREFIX = "matching_message_"
 class KafkaLogStore(object):
     def __init__(self, product_id: str, brokers: List[str]):
         self.topic = "".join([TOPIC_BOOK_MESSAGE_PREFIX, product_id])
+        print(self.topic)
         self.log_writer = KafkaProducer(brokers=brokers)
 
     async def store(self, logs: List[Log]):

@@ -46,6 +46,12 @@ class KafkaConsumer(object):
         self.consumer = AIOKafkaConsumer(topic, bootstrap_servers=','.join(brokers),
                                          group_id=group_id)
 
+    async def seek(self, offset=0):
+        partitions = self.consumer.assignment()
+        if len(partitions) == 0:
+            raise KafkaException("len(self.partitions) == 0")
+        for partition in partitions:
+            self.consumer.seek(partition=partition, offset=offset)
     async def start(self):
         await self.consumer.start()
 

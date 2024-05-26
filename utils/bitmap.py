@@ -26,3 +26,6 @@ class BitMap(object):
         bitmap = BitMap(0)
         bitmap.data = data
         return bitmap
+
+    def to_list(self):
+        return self.data
