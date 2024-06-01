@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 
 from matching.engine import Engine
@@ -8,6 +9,9 @@ from matching.redis_snapshot import RedisSnapshotStore
 from models.models import Product
 
 from config import *
+
+# Initialize a global dictionary to keep track of running tasks
+active_tasks = {}
 
 
 async def initialize_engine(product_data):
@@ -48,11 +52,73 @@ async def run_engine_supervisor(product_data):
             await asyncio.sleep(5)
 
 
-async def main():
-    product_configs = products  # Load your product configurations
+async def manage_product_tasks():
+    while True:
+        # Fetch product configurations from Redis
+        product_configs:dict = await fetch_product_configs_from_redis()
 
-    tasks = [asyncio.create_task(run_engine_supervisor(product_data)) for product_data in product_configs]
-    await asyncio.gather(*tasks)
+        # new_product_ids = {product['id'] for product in product_configs}
+
+        active_product_ids = {k for k, v in product_configs.items() if v['active']}
+
+        # Get the currently active product IDs
+        current_product_ids = set(active_tasks.keys())
+
+        # Determine products to start (newly activated)
+        products_to_start = active_product_ids - current_product_ids
+
+        # Determine products to stop (deactivated)
+        products_to_stop = current_product_ids - active_product_ids
+
+        # Start tasks for newly activated products
+        for product_key, product_data in product_configs.items():
+            if product_data['id'] in products_to_start:
+                logging.info(f"Starting engine for product {product_data['id']}")
+                task = asyncio.create_task(run_engine_supervisor(product_data))
+                active_tasks[product_data['id']] = task
+
+        # Cancel tasks for deactivated products
+        for product_id in products_to_stop:
+            logging.info(f"Stopping engine for product {product_id}")
+            active_tasks[product_id].cancel()
+            del active_tasks[product_id]
+
+        # Sleep for a while before checking again
+        await asyncio.sleep(10)
+
+
+async def fetch_product_configs_from_redis():
+    # Simulate fetching product configurations from Redis
+    # Replace this with actual Redis fetch logic
+    import redis
+    r = redis.Redis(host=redis_ip, port=redis_port, decode_responses=True)
+    markets = json.loads(r.get("markets"))
+    return markets
+    return [
+        {
+            "id": "BTC-USDT",
+            "base_currency": "BTC",
+            "quote_currency": "USDT",
+            "base_scale": 8,
+            "quote_scale": 2,
+            "group_id": "order-reader-BTC-USDT-group",
+            "active": True
+        },
+        {
+            "id": "ETH-USDT",
+            "base_currency": "ETH",
+            "quote_currency": "USDT",
+            "base_scale": 6,
+            "quote_scale": 2,
+            "group_id": "order-reader-ETH-USDT-group",
+            "active": True
+        }
+    ]
+
+
+async def main():
+    # Start the product task manager
+    await manage_product_tasks()
 
 
 if __name__ == "__main__":

@@ -138,6 +138,7 @@ class Engine(object):
         # The Order Book will be dispatched using producer for realtime order book update
         self.orderbook_dispatcher: OrderBookDispatcher = orderbook_dispatcher
         self.order_book_list: Queue = Queue(maxsize=200)
+        self.is_active:bool = True
 
         # Pending snapshot brought from method level to class level
         self.pending_snapshot: Optional[Snapshot] = None
@@ -160,14 +161,23 @@ class Engine(object):
         task5 = asyncio.create_task(self.run_snapshot_committer())
         task6 = asyncio.create_task(self.run_snapshots())
         task7 = asyncio.create_task(self.dispatch_orderbook())
+        task8 = asyncio.create_task(self.active_check())
         await gather(task1,
                      task2,
                      task3,
                      task4,
                      task5,
                      task6,
-                     task7
+                     task7,
+                     task8,
                      )
+    async def active_check(self):
+        while True:
+            await asyncio.sleep(15)
+            status = json.loads(await self.snapshot_store.redis_client.get("markets"))[self.product_id]
+            print(self.product_id,'=================')
+            if not status:
+                self.is_active = False
 
     # Responsible for continuously pulling orders and writing to chan
     async def run_fetcher(self):
@@ -184,6 +194,10 @@ class Engine(object):
         while True:
             try:
                 # print('offset before', offset)
+                if not self.is_active:
+                    await asyncio.sleep(2)
+                    logging.fatal("market is not active ")
+                    sys.exit()
                 offset, order = await self.order_reader.fetch_order()
 
                 await self.order_chan.put(OffsetOrder(offset=offset, order=order))
@@ -195,7 +209,7 @@ class Engine(object):
     # respond to the snapshot request at the same time
     async def run_order_applier(self):
         order_offset: int = 0
-        await self.snapshot_store.redis_client.set("order_offset", order_offset)
+        await self.snapshot_store.redis_client.set(f"{self.product_id}-order_offset", order_offset)
 
         while True:
             order_task = self.order_chan.get()
@@ -237,7 +251,7 @@ class Engine(object):
                 await self.order_book_list.put(order_book)
                 # The offset of the record order is used to determine whether a snapshot needs to be taken
                 order_offset = offset_order.offset
-                await self.snapshot_store.redis_client.set("order_offset", order_offset)
+                await self.snapshot_store.redis_client.set(f"{self.product_id}-order_offset", order_offset)
                 # print('offset_order in applier', order_offset)
                 order_book['last_offset'] = order_offset
                 # print(order_book,'======orderbook akharie')
@@ -251,7 +265,7 @@ class Engine(object):
             try:
                 snap_task = self.snapshot_req_chan.get()
                 snapshot: Snapshot = await wait_for(snap_task, timeout=7)
-                order_offset = int(await self.snapshot_store.redis_client.get("order_offset"))
+                order_offset = int(await self.snapshot_store.redis_client.get(f"{self.product_id}-order_offset"))
                 # print('order_offset in snapshot applier', order_offset)
                 if order_offset is None:
                     raise Exception("order_offset is None. wait for it")
