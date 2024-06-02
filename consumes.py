@@ -40,36 +40,36 @@
 #
 # if __name__ == "__main__":
 #     run(consume())
-s = [
-        {
-            "id": "BTC-USDT",
-            "base_currency": "BTC",
-            "quote_currency": "USDT",
-            "base_scale": 8,
-            "quote_scale": 2,
-            "group_id": "order-reader-BTC-USDT-group",
-            "active": True
-        },
-        {
-            "id": "ETH-USDT",
-            "base_currency": "ETH",
-            "quote_currency": "USDT",
-            "base_scale": 6,
-            "quote_scale": 2,
-            "group_id": "order-reader-ETH-USDT-group",
-            "active": True
-        }
-    ]
+s = {
+    "BTC-USDT": {
+        "id": "BTC-USDT",
+        "base_currency": "BTC",
+        "quote_currency": "USDT",
+        "base_scale": 8,
+        "quote_scale": 2,
+        "group_id": "order-reader-BTC-USDT-group",
+        "active": True
+    },
+    "ETH-USDT": {
+        "id": "ETH-USDT",
+        "base_currency": "ETH",
+        "quote_currency": "USDT",
+        "base_scale": 6,
+        "quote_scale": 2,
+        "group_id": "order-reader-ETH-USDT-group",
+        "active": False
+    }
+}
 
 import json
 import redis
-d=json.dumps(s)
 
+d = json.dumps(s)
 
 redis_ip = "localhost"  # Replace with your Redis server IP
-redis_port = 6380       # Replace with your Redis server port
+redis_port = 6380  # Replace with your Redis server port
 
 # Connect to Redis
 r = redis.Redis(host=redis_ip, port=redis_port, decode_responses=True)
 
-r.set("markets",d)
+r.set("markets", d)

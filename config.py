@@ -33,5 +33,5 @@ redis_ip = "localhost"
 redis_port = 6380
 
 # kafka
-kafka_brokers = ["localhost:29092"]
+kafka_brokers = ["localhost:9093"]
 # group_id = "order-reader-{}-group".format(product_id)

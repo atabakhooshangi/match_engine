@@ -49,25 +49,25 @@ class Order:
             'status': self.status}
 import datetime
 
-producer = KafkaProducer(bootstrap_servers='localhost:29092')
+producer = KafkaProducer(bootstrap_servers='localhost:9093')
 buy_orders = []
 sell_orders = []
 pr_type = 1
 print(datetime.datetime.now(),'----------------------------')
-for i in range(300861, 300862):
-    ri = randint(2, 2)
+for i in range(20, 30):
+    ri = randint(1, 2)
     # ri = 1 if pr_type == 2 else 2
 
     price = Decimal(f"{randint(3300, 3900)}")
-    # size = Decimal(f"{randint(1, 5)}.00")
-    size = Decimal("0.02")
+    size = Decimal(f"{randint(1, 5)}.00")
+    # size = Decimal("0.02")
     order = Order(_id=i, created_at=datetime.datetime.now().timestamp() * 1000, product_id="BTC-USDT", user_id=i,
                   client_oid="",
                   # price=Decimal(f"{randint(15, 20)}") if ri == 2 else Decimal(f"{randint(20, 22)}"),
                   price=price,
                   size=size,
-                  # funds=Decimal(price * size),
-                  funds=Decimal('0'),
+                  funds=Decimal(price * size),
+                  # funds=Decimal('0'),
                   _type="market",
                   side="buy" if ri == 1 else "sell", time_in_force="GTC", status="NEW")
 
