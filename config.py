@@ -31,7 +31,7 @@ products = [
 # redis
 redis_ip = "localhost"
 redis_port = 6380
-
+group_id_suffix = "-order-reader-group"
 # kafka
 kafka_brokers = ["localhost:9093"]
 # group_id = "order-reader-{}-group".format(product_id)

@@ -15,6 +15,7 @@ active_tasks = {}
 
 
 async def initialize_engine(product_data):
+    group_id = f"{product_data['id']}" + group_id_suffix
     try:
         product = Product(_id=product_data['id'], base_currency=product_data['base_currency'],
                           quote_currency=product_data['quote_currency'], base_scale=product_data['base_scale'],
@@ -25,7 +26,7 @@ async def initialize_engine(product_data):
         log_store = KafkaLogStore(product_id=product.id, brokers=kafka_brokers)
         await log_store.start()
         order_reader = KafkaOrderReader(product_id=product_data['id'], brokers=kafka_brokers,
-                                        group_id=product_data['group_id'])
+                                        group_id=group_id)
         await order_reader.start()
 
         orderbook_dispatcher = OrderBookDispatcher(product_id=product_data['id'], brokers=kafka_brokers)
@@ -55,7 +56,7 @@ async def run_engine_supervisor(product_data):
 async def manage_product_tasks():
     while True:
         # Fetch product configurations from Redis
-        product_configs:dict = await fetch_product_configs_from_redis()
+        product_configs: dict = await fetch_product_configs_from_redis()
 
         # new_product_ids = {product['id'] for product in product_configs}
 
