@@ -199,7 +199,6 @@ class Engine(object):
                     logging.fatal("market is not active ")
                     sys.exit()
                 offset, order = await self.order_reader.fetch_order()
-
                 await self.order_chan.put(OffsetOrder(offset=offset, order=order))
                 logging.info("fetch_order: {}".format(Order.to_json_str(order)))
             except Exception as ex:
@@ -292,7 +291,7 @@ class Engine(object):
     async def run_log_committer(self):
         seq: int = self.order_book.log_seq
         logs: List[Log] = list()
-        match_logs = []
+
         while True:
 
             try:
@@ -306,15 +305,16 @@ class Engine(object):
                     continue
                 logs.append(log)
                 # chan is not empty and buffer is not full, continue read.
-                if self.log_chan.qsize() > 0 and len(logs) < 10:
-                    continue
+                # if self.log_chan.qsize() > 0 and len(logs) < 2:
+                #     continue
 
                 try:
                     # store log, clean buffer
-                    # for log in logs:
-                    #     # print('log in log_committer---------------------------')
-                    #     await self.log_store.log_writer.send('matching_message_BTC-USD',Log.to_json_str(log).encode("utf8"))
-                    await self.log_store.store(logs)
+                    print(len(logs))
+                    for log in logs:
+                        # print('log in log_committer---------------------------')
+                        await self.log_store.log_writer.send('matching_message_BTC-USDT',Log.to_json_str(log).encode("utf8"))
+                    # await self.log_store.store(logs)
                     logs.clear()
                 except Exception as ex:
                     logging.fatal("{}".format(ex))

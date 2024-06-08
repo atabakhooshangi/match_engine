@@ -19,7 +19,7 @@ async def send_message_to_websocket(message):
 
 # a consumer to consume orderbook topic using kafka consumer
 async def orderbook_consume():
-    consumer = KafkaConsumer(["localhost:29092"], "BTC-USDT_order_book", "orderbook-dist-group")
+    consumer = KafkaConsumer(["localhost:9093"], "BTC-USDT_order_book", "orderbook-dist-group")
     await consumer.start()
 
     while True:

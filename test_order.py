@@ -54,7 +54,7 @@ buy_orders = []
 sell_orders = []
 pr_type = 1
 print(datetime.datetime.now(),'----------------------------')
-for i in range(20, 30):
+for i in range(1, 30):
     ri = randint(1, 2)
     # ri = 1 if pr_type == 2 else 2
 
